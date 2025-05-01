@@ -18,7 +18,48 @@ edges = [
 G.add_nodes_from(cities)
 G.add_weighted_edges_from(edges)
 
-# Аналіз
+# Функція виводу таблиці на кожному кроці
+def print_step_table(distances, visited):
+    print("{:<12} {:<10} {:<10}".format("Вершина", "Відстань", "Перевірено"))
+    print("-" * 35)
+    for vertex in distances:
+        dist = "∞" if distances[vertex] == float("inf") else str(distances[vertex])
+        checked = "Так" if vertex in visited else "Ні"
+        print("{:<12} {:<10} {:<10}".format(vertex, dist, checked))
+    print()
+
+# Реалізація алгоритму Дейкстри з покроковим виводом
+def detailed_dijkstra(graph, start):
+    distances = {node: float("inf") for node in graph.nodes()}
+    distances[start] = 0
+    visited = []
+    unvisited = list(graph.nodes())
+
+    while unvisited:
+        current = min(
+            (node for node in unvisited),
+            key=lambda node: distances[node],
+            default=None
+        )
+
+        if current is None or distances[current] == float("inf"):
+            break
+
+        for neighbor in graph.neighbors(current):
+            weight = graph[current][neighbor]['weight']
+            new_distance = distances[current] + weight
+            if new_distance < distances[neighbor]:
+                distances[neighbor] = new_distance
+
+        visited.append(current)
+        unvisited.remove(current)
+
+        print(f"{Fore.YELLOW}🔍 Оновлення після обробки вершини: {current}")
+        print_step_table(distances, visited)
+
+    return distances
+
+# Аналіз мережі
 def analyze_network(G):
     print(f"{Fore.CYAN}{Style.BRIGHT}Назва мережі:{Style.RESET_ALL} {G.name}")
     print(f"{Fore.YELLOW}Кількість міст: {G.number_of_nodes()}, маршрутів: {G.number_of_edges()}")
@@ -26,35 +67,26 @@ def analyze_network(G):
     for city in G.nodes():
         print(f" - {city}: Вхід = {G.in_degree(city)}, Вихід = {G.out_degree(city)}")
 
-# Один найкоротший шлях
-def find_shortest_path(G, start, end):
-    try:
-        dist, path = nx.single_source_dijkstra(G, start, end, weight='weight')
-        print(f"\n{Fore.BLUE}Шлях з {start} до {end}:{Style.RESET_ALL} {path}")
-        print(f"{Fore.MAGENTA}Загальна вага: {dist} од.")
-    except nx.NetworkXNoPath:
-        print(f"\n{Fore.RED}Немає шляху між {start} і {end}.")
-
-# Таблиця всіх найкоротших відстаней
-def shortest_paths_table(G):
+# Таблиця всіх найкоротших шляхів з детальною реалізацією
+def shortest_paths_table_detailed(G):
     headers = ["Від \\ До"] + cities
     table = []
 
     for source in cities:
+        print(f"{Fore.CYAN}\n=== Алгоритм Дейкстри з покроковим виводом для вершини: {source} ==={Style.RESET_ALL}")
+        distances = detailed_dijkstra(G, source)
         row = [source]
-        lengths, _ = nx.single_source_dijkstra(G, source, weight='weight')
         for target in cities:
             if source == target:
                 row.append("—")
             else:
-                row.append(lengths.get(target, "∞"))
+                dist = distances.get(target, float("inf"))
+                row.append("∞" if dist == float("inf") else dist)
         table.append(row)
 
-    print(f"\n{Fore.CYAN}{Style.BRIGHT}Таблиця найкоротших відстаней між усіма містами:{Style.RESET_ALL}")
+    print(f"\n{Fore.CYAN}{Style.BRIGHT}Зведена таблиця найкоротших відстаней (власний алгоритм):{Style.RESET_ALL}")
     print(tabulate(table, headers=headers, tablefmt="grid"))
 
-# Запуск
+# --- Запуск ---
 analyze_network(G)
-find_shortest_path(G, "Warszawa", "Lublin")
-find_shortest_path(G, "Gdańsk", "Kraków")
-shortest_paths_table(G)
+shortest_paths_table_detailed(G)
